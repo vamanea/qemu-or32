@@ -128,6 +128,8 @@ static void openrisc_sim_init(MachineState *machine)
         openrisc_sim_net_init(get_system_memory(), 0x92000000,
                               0x92000400, cpu->env.irq[4], nd_table);
     }
+    /* OpenCores FrameBuffer device */
+    sysbus_create_simple("ocfb", 0x91000000, cpu->env.irq[8]);
     
     /* OpenCores keyboard */
     sysbus_create_simple("ockb", 0x94000000, cpu->env.irq[5]);
