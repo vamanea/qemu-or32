@@ -167,6 +167,9 @@ static void openrisc_sim_init(MachineState *machine)
     /* OpenCores keyboard */
     sysbus_create_simple("ockb", 0x94000000, cpu->env.irq[5]);
 
+    /* LPC32XX Touch Screen */
+    sysbus_create_simple("lpc32xx", 0x93000000, cpu->env.irq[9]);
+
     cpu_openrisc_load_kernel(ram_size, kernel_filename, cpu);
 }
 
