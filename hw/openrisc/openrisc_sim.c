@@ -24,9 +24,11 @@
 #include "hw/char/serial.h"
 #include "net/net.h"
 #include "hw/loader.h"
+#include "hw/ide.h"
 #include "exec/address-spaces.h"
 #include "sysemu/sysemu.h"
 #include "hw/sysbus.h"
+#include "sysemu/blockdev.h"
 #include "sysemu/qtest.h"
 
 #define KERNEL_LOAD_ADDR 0x100
@@ -36,6 +38,32 @@ static void main_cpu_reset(void *opaque)
     OpenRISCCPU *cpu = opaque;
 
     cpu_reset(CPU(cpu));
+}
+
+static void openrisc_sim_ide_init(MemoryRegion *address_space,
+                                  hwaddr base,
+                                  hwaddr descriptors,
+                                  qemu_irq irq)
+{
+    DeviceState *dev;
+    SysBusDevice *busdev;
+    DriveInfo *dinfo;
+
+
+    dinfo = drive_get(IF_IDE, 0, 0);
+    if (!dinfo) {
+        return;
+    }
+    dev = qdev_create(NULL, "mmio-ide");
+    busdev = SYS_BUS_DEVICE(dev);
+    sysbus_connect_irq(busdev, 0, irq);
+    qdev_prop_set_uint32(dev, "shift", 2);
+    qdev_init_nofail(dev);
+    memory_region_add_subregion(address_space, base,
+                                sysbus_mmio_get_region(busdev, 0));
+    memory_region_add_subregion(address_space, descriptors,
+                                sysbus_mmio_get_region(busdev, 1));
+    mmio_ide_init_drives(dev, dinfo, NULL);
 }
 
 static void openrisc_sim_net_init(MemoryRegion *address_space,
@@ -128,9 +156,14 @@ static void openrisc_sim_init(MachineState *machine)
         openrisc_sim_net_init(get_system_memory(), 0x92000000,
                               0x92000400, cpu->env.irq[4], nd_table);
     }
+
+    /* Platform ATA device */
+    openrisc_sim_ide_init(get_system_memory(), 0x9e000000,
+                     0x9e000100, cpu->env.irq[15]);
+
     /* OpenCores FrameBuffer device */
     sysbus_create_simple("ocfb", 0x91000000, cpu->env.irq[8]);
-    
+
     /* OpenCores keyboard */
     sysbus_create_simple("ockb", 0x94000000, cpu->env.irq[5]);
 
